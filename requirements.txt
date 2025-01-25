@@ -1,0 +1,8 @@
+langchain
+langchain-anthropic
+langchain-groq
+flask
+ipykernel
+python-dotenv
+streamlit
+-e .
