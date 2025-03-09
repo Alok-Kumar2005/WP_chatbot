@@ -2,14 +2,26 @@ import os
 import re
 from flask import Flask, render_template, request, jsonify
 from dotenv import load_dotenv
+
+# LangChain imports
 from langchain_groq import ChatGroq
 from langchain.prompts import PromptTemplate
 from langchain.chains import LLMChain
+from langchain.memory import ConversationBufferMemory
 
 load_dotenv()
 
 app = Flask(__name__)
 
+# Conversation memory
+# NOTE: We set `output_key="text"` so it matches the chain's default output.
+memory = ConversationBufferMemory(
+    memory_key="history",
+    input_key="input",
+    output_key="text"
+)
+
+# Prompt template referencing {history} and {input}
 template = """
 You are a code-only programming assistant. Follow these rules STRICTLY:
 1. Respond ONLY to programming/code-related questions
@@ -18,21 +30,30 @@ You are a code-only programming assistant. Follow these rules STRICTLY:
 4. Format code with proper line breaks and indentation
 5. If question is non-programming, respond "I specialize in programming queries only."
 
-Current query: {input}
+Conversation so far:
+{history}
+
+User query: {input}
 """
 
+prompt = PromptTemplate(
+    input_variables=["history", "input"],
+    template=template
+)
+
+# Initialize ChatGroq LLM
 llm = ChatGroq(
     model="mixtral-8x7b-32768",
     temperature=0,
     api_key=os.getenv("GROQ_API_KEY")
 )
 
-code_chatbot_prompt = PromptTemplate(
-    input_variables=["input"],
-    template=template
+# Build the chain with memory
+llm_chain = LLMChain(
+    llm=llm,
+    prompt=prompt,
+    memory=memory
 )
-
-llm_chain = LLMChain(llm=llm, prompt=code_chatbot_prompt)
 
 @app.route('/')
 def index():
@@ -42,9 +63,10 @@ def index():
 def get_response():
     user_message = request.json.get('message', '')
     try:
-        response = llm_chain.invoke({"input": user_message})
-        raw_output = response['text']
-        
+        # Run the chain with memory. This returns a string (the AI's final output).
+        raw_output = llm_chain.run(user_message)
+
+        # Remove leftover backticks if any
         cleaned = re.sub(r'```[a-z]*\n?', '', raw_output)
         cleaned = re.sub(r'\n\s*```', '', cleaned)
         cleaned = cleaned.strip()

@@ -3,37 +3,37 @@ document.addEventListener('DOMContentLoaded', () => {
     const userInput = document.getElementById('userInput');
     const sendBtn = document.getElementById('sendBtn');
   
-    // Helper: Append new message to chat
+    // Helper: add new message to chat window
     function appendMessage(text, sender) {
       const msgDiv = document.createElement('div');
       msgDiv.classList.add('message', sender);
       msgDiv.textContent = text;
       chatBox.appendChild(msgDiv);
-      chatBox.scrollTop = chatBox.scrollHeight; 
+      chatBox.scrollTop = chatBox.scrollHeight;
     }
   
-    // Send user input to backend, then display AI response
+    // Send the user's message to the backend, then display the AI's response
     function sendMessage() {
       const text = userInput.value.trim();
       if (!text) return;
-      appendMessage(text, 'user');   
-      userInput.value = '';        
+      appendMessage(text, 'user');
+      userInput.value = '';
   
       fetch('/get_response', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: text })
       })
-      .then(res => res.json())
+      .then(response => response.json())
       .then(data => {
         if (data.status === 'success') {
-          appendMessage(data.message, 'ai'); // AI code output
+          appendMessage(data.message, 'ai');
         } else {
           appendMessage('Error: ' + data.message, 'ai');
         }
       })
-      .catch(err => {
-        appendMessage('Error: ' + err, 'ai');
+      .catch(error => {
+        appendMessage('Error: ' + error, 'ai');
       });
     }
   
